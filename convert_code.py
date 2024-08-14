@@ -1,7 +1,23 @@
-# Importar la biblioteca re para expresiones regulares
 import re
-import pandas as pd
 import PyPDF2
+import pprint
+
+
+# Función para extraer el texto del PDF
+def extract_text_from_pdf(pdf_path):
+    text = ""
+    with open(pdf_path, "rb") as file:
+        reader = PyPDF2.PdfReader(file)
+        for page_num in range(len(reader.pages)):
+            page = reader.pages[page_num]
+            text += page.extract_text()
+        return text
+
+
+# Ruta al archivo PDF
+pdf_path = "docs/tu_documento.pdf"
+# Extraer el texto del PDF
+pdf_text = extract_text_from_pdf(pdf_path)
 
 # Inicializar el diccionario donde se guardará la información
 result = {}
@@ -10,60 +26,41 @@ result = {}
 current_title = None
 current_chapter = None
 
-
-# Función para leer el contenido del PDF
-def extract_text_from_pdf(pdf_path):
-    with open(pdf_path, "rb") as file:
-        pdf_reader = PyPDF2.PdfReader(file)
-        text = ""
-        for page_num in range(len(pdf_reader.pages)):
-            page = pdf_reader.pages[page_num]
-            text += page.extract_text() + "\n"
-        return text
-
-
-# Ruta al archivo PDF
-pdf_path = "docs/tu_documento.pdf"
-pdf_text = extract_text_from_pdf(pdf_path).strip()
-
-lines = pdf_text.split("\n")
-
 # Recorrer cada línea del texto
-print(lines)
-
-for line in lines:
-    # print(line)
-    match_title = re.match(
-        r"(Título\s{1}\w+)\s{1}(.*?)\s{2}(Capítulo\s{1}\w+)\s{1}(.*?)\s{2}", line
-    )
-    print(match_title)
+for line in pdf_text.splitlines():
+    # Limpiar espacios adicionales
+    line = line.strip()
 
     # Buscar títulos
+    match_title = re.match(r"(Título\s+\w+)\s+(.+)", line)
     if match_title:
         current_title = match_title.group(1) + " " + match_title.group(2)
         result[current_title] = {}
-        current_chapter = match_title.group(3)
-        result[current_title][current_chapter] = []
+        current_chapter = None
         continue
+
     # Buscar capítulos
-    match_chapter = re.match(r"(Capítulo\s+\w+)\s+(.+?)\s+(Artículo\s+\d+)", line)
+    match_chapter = re.match(r"(Capítulo\s+\w+)\s+(.+)", line)
     if match_chapter:
         current_chapter = match_chapter.group(1) + " " + match_chapter.group(2)
-        if current_title not in result:
-            result[current_title] = {}
         result[current_title][current_chapter] = []
-        article = match_chapter.group(3)
-        result[current_title][current_chapter].append(article)
         continue
 
     # Buscar artículos
     match_article = re.match(r"(Artículo\s+\d+)\.", line)
     if match_article:
-        article = match_article.group(1)
-        if current_chapter not in result[current_title]:
-            result[current_title][current_chapter] = []
-        result[current_title][current_chapter].append(article)
-
+        article = (
+            match_article.group(1)
+            + " "
+            + line.split(match_article.group(1) + ".")[1].strip()
+        )
+        if current_chapter:
+            result[current_title][current_chapter].append(article)
+        else:
+            # Si no hay capítulo actual, crear una lista de artículos en el título directamente
+            if "Artículos" not in result[current_title]:
+                result[current_title]["Artículos"] = []
+            result[current_title]["Artículos"].append(article)
 
 # Mostrar el diccionario resultante
-print(result)
+pprint.pprint(result)
