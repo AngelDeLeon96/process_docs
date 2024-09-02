@@ -97,10 +97,79 @@ def process_document(text):
 
     return titles
 """
+title_pattern = r"(?:^|\n)Título (\w+)\s*(.*?)(?=\nTítulo|\nCapítulo|\nArtículo|\Z)"
+chapter_pattern = (
+    r"(?:^|\n)Capítulo (\w+)(?:\s*|\n)(.*?)(?=\nCapítulo|\nTítulo|\nArtículo|\Z)"
+)
+section_pattern = r"(?:^|\n)Sección (\d+\.?\w*)\s*(.*?)(?=\nSección|\nCapítulo|\nTítulo|\nArtículo|\Z)"
+article_pattern = (
+    r"(?:^|\n)Artículo (\d+)\.(.*?)(?=\nArtículo|\nCapítulo|\nTítulo|\nSección|\Z)"
+)
 
-import re
+
+def find_and_print_matches(pattern, text, name):
+    matches = list(re.finditer(pattern, text, re.DOTALL | re.MULTILINE))
+    for match in matches:
+        number = match.group(1)
+        content = match.group(2).strip() if len(match.groups()) > 1 else ""
+        print(f"{name} {number}:")
+        print(content)
+        print()
 
 
+def process_document(content):
+    # Encontramos todas las coincidencias
+    title_matches = list(re.finditer(title_pattern, content, re.DOTALL | re.MULTILINE))
+    chapter_matches = list(
+        re.finditer(chapter_pattern, content, re.DOTALL | re.MULTILINE)
+    )
+    section_matches = list(
+        re.finditer(section_pattern, content, re.DOTALL | re.MULTILINE)
+    )
+    article_matches = list(
+        re.finditer(article_pattern, content, re.DOTALL | re.MULTILINE)
+    )
+
+    # Combinamos y ordenamos todas las coincidencias
+    all_matches = (
+        [(m.start(), "title", m) for m in title_matches]
+        + [(m.start(), "chapter", m) for m in chapter_matches]
+        + [(m.start(), "section", m) for m in section_matches]
+        + [(m.start(), "article", m) for m in article_matches]
+    )
+    all_matches.sort(key=lambda x: x[0])
+
+    # Inicializamos variables para seguir la estructura
+    current_title = current_chapter = current_section = ""
+    structure = []
+
+    # Procesamos las coincidencias en orden
+    for _, match_type, match in all_matches:
+        if match_type == "title":
+            current_title = f"Título {match.group(1)}"
+            current_chapter = current_section = ""
+        elif match_type == "chapter":
+            current_chapter = f"Capítulo {match.group(1)}"
+            current_section = ""
+        elif match_type == "section":
+            current_section = f"Sección {match.group(1)}"
+        elif match_type == "article":
+            article_number = match.group(1)
+            article_content = match.group(2).strip()
+            structure.append(
+                [
+                    current_title,
+                    current_chapter,
+                    current_section,
+                    f"Artículo {article_number}",
+                    article_content,
+                ]
+            )
+
+    return structure
+
+
+"""
 def process_document(text):
     titles = {}
     current_title = None
@@ -108,21 +177,25 @@ def process_document(text):
     current_section = None
 
     # Patrones regex ajustados
-    title_pattern = r"Título (\w+)\s*(.*?)(?=\nTítulo|\Z)"
-    chapter_pattern = r"Capítulo (\w+)\s*(.*?)(?=\nCapítulo|\nTítulo|\Z)"
-    section_pattern = r"Sección (\d+\.?\w*)\s*(.*?)(?=\nSección|\nCapítulo|\nTítulo|\Z)"
+    title_pattern = r"(?:^|\n)Título (\w+)\s*(.*?)(?=\nTítulo|\nCapítulo|\nArtículo|\Z)"
+    chapter_pattern = (
+        r"(?:^|\n)Capítulo (\w+)(?:\s*|\n)(.*?)(?=\nCapítulo|\nTítulo|\nArtículo|\Z)"
+    )
+    section_pattern = r"(?:^|\n)Sección (\d+\.?\w*)\s*(.*?)(?=\nSección|\nCapítulo|\nTítulo|\nArtículo|\Z)"
     article_pattern = (
-        r"Artículo (\d+)\.(.*?)(?=\nArtículo|\nSección|\nCapítulo|\nTítulo|\Z)"
+        r"(?:^|\n)Artículo (\d+)\.(.*?)(?=\nArtículo|\nCapítulo|\nTítulo|\nSección|\Z)"
     )
 
     # Encontrar todos los títulos
-    title_matches = list(re.finditer(title_pattern, text, re.DOTALL))
+    title_matches = list(re.finditer(title_pattern, text, re.DOTALL | re.MULTILINE))
 
     for i, title_match in enumerate(title_matches):
         title_num, title_content = title_match.groups()
         title_name = title_content.strip().split("\n")[0]
         current_title = f"Título {title_num}: {title_name}"
+
         titles[current_title] = {}
+        print(i, current_title)
 
         # Determinar el final del contenido del título
         title_end = (
@@ -131,16 +204,20 @@ def process_document(text):
             else len(text)
         )
         title_full_content = text[title_match.start() : title_end]
+        # print(title_full_content, "\n")
 
         # Encontrar capítulos dentro del título
         chapter_matches = list(
-            re.finditer(chapter_pattern, title_full_content, re.DOTALL)
+            re.finditer(chapter_pattern, title_full_content, re.DOTALL | re.MULTILINE)
         )
+
         if chapter_matches:
             for j, chapter_match in enumerate(chapter_matches):
+
                 chapter_num, chapter_content = chapter_match.groups()
                 chapter_name = chapter_content.strip().split("\n")[0]
                 current_chapter = f"Capítulo {chapter_num}: {chapter_name}"
+                print(current_chapter, "\n")
                 titles[current_title][current_chapter] = {}
 
                 # Determinar el final del contenido del capítulo
@@ -158,33 +235,9 @@ def process_document(text):
                     re.finditer(section_pattern, chapter_full_content, re.DOTALL)
                 )
 
-                if section_matches:
-                    for k, section_match in enumerate(section_matches):
-                        section_num, section_content = section_match.groups()
-                        section_name = section_content.strip().split("\n")[0]
-                        current_section = f"Sección {section_num}: {section_name}"
-                        titles[current_title][current_chapter][current_section] = {}
-
-                        # Determinar el final del contenido de la sección
-                        section_end = (
-                            chapter_full_content.index(section_matches[k + 1].group())
-                            if k < len(section_matches) - 1
-                            else len(chapter_full_content)
-                        )
-                        section_full_content = chapter_full_content[
-                            section_match.start() : section_end
-                        ]
-
-                        # Buscar artículos dentro de la sección
-                        process_articles(
-                            section_full_content,
-                            titles[current_title][current_chapter][current_section],
-                        )
-                else:
-                    # Si no hay secciones, buscar artículos directamente en el capítulo
-                    process_articles(
-                        chapter_full_content, titles[current_title][current_chapter]
-                    )
+                process_articles(
+                    chapter_full_content, titles[current_title][current_chapter]
+                )
         else:
             # Si no hay capítulos, procesar los artículos directamente en el título
             process_articles(title_full_content, titles[current_title])
@@ -219,7 +272,7 @@ def process_articles(content, container):
                 f"Advertencia: Posible salto detectado entre Artículo {article_numbers[i]} y Artículo {article_numbers[i+1]}"
             )
 
-
+"""
 """
 def process_articles(content, container):
     article_pattern = r"Artículo (\d+)\.(.*?)(?=\nArtículo|\Z)"

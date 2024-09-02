@@ -51,30 +51,8 @@ def save_to_csv(structured_content, csv_filename):
 
 
 def save_to_csv(structured_content, csv_filename):
-    with open(csv_filename, "w", newline="", encoding="utf-8") as csvfile:
-        csvwriter = csv.writer(csvfile)
-
-        # Escribir los encabezados
-        csvwriter.writerow(["Título", "Capítulo", "Sección", "Artículo", "Contenido"])
-
-        # Escribir los datos
-        for title, chapters in structured_content.items():
-            if isinstance(chapters, dict):
-                for chapter, sections_or_articles in chapters.items():
-                    if isinstance(sections_or_articles, dict):
-                        for section, articles in sections_or_articles.items():
-                            if isinstance(articles, dict):
-                                for article, content in articles.items():
-                                    csvwriter.writerow(
-                                        [title, chapter, section, article, content]
-                                    )
-                            else:
-                                csvwriter.writerow(
-                                    [title, chapter, section, "", articles]
-                                )
-                    else:
-                        csvwriter.writerow(
-                            [title, chapter, "", "", sections_or_articles]
-                        )
-            else:
-                csvwriter.writerow([title, "", "", "", chapters])
+    with open(csv_filename, "w", newline="", encoding="utf-8") as file:
+        writer = csv.writer(file)
+        writer.writerow(["Título", "Capítulo", "Sección", "Artículo", "Contenido"])
+        writer.writerows(structured_content)
+    print("La estructura se ha guardado en 'estructura_legal.csv'")
