@@ -3,7 +3,6 @@ import re
 import pdfplumber  # o PyPDF2, dependiendo de su preferencia
 import csv
 from datetime import datetime, date
-import PyPDF2
 from utils.process import process_document
 from utils.save_csv import save_to_csv
 
