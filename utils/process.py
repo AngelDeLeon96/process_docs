@@ -53,9 +53,12 @@ def process_document(content):
             current_title = f"Título {match.group(1).strip()}: {match.group(2).strip()}"
             current_chapter = current_section = ""
         elif match_type == "chapter":
-            current_chapter = (
-                f"Capítulo {match.group(1).strip()}: {match.group(2).strip()}"
-            )
+            current_subtitle = match.group(2).strip()
+            if "\n" in current_subtitle:
+                current_subtitle = current_subtitle.split("\n", 1)[0]
+            else:
+                current_subtitle = current_subtitle
+            current_chapter = f"Capítulo {match.group(1).strip()}: {current_subtitle}"
             current_section = ""
         elif match_type == "section":
             current_section = f"Sección {match.group(1)}"
